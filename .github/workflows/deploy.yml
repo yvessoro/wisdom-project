@@ -1,0 +1,69 @@
+name: 🚀 Deploy to Salesforce
+
+on:
+  pull_request:
+    branches:
+      - master
+      - preprod
+
+jobs:
+  test:
+    name: ✅ Vérification des Tests Apex
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout du Code
+        uses: actions/checkout@v3
+
+      - name: 🚀 Installer Salesforce CLI
+        run: npm install --global sfdx-cli
+
+      - name: 🔑 Authentification Salesforce
+        run: |
+          if [[ "${{ github.base_ref }}" == "master" ]]; then
+            echo "${{ secrets.SALESFORCE_AUTH_URL_PROD }}" > ./authfile.txt
+            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a prod-org
+            echo "SF_ALIAS=prod-org" >> $GITHUB_ENV
+          elif [[ "${{ github.base_ref }}" == "preprod" ]]; then
+            echo "${{ secrets.SALESFORCE_AUTH_URL_PREPROD }}" > ./authfile.txt
+            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a preprod-org
+            echo "SF_ALIAS=preprod-org" >> $GITHUB_ENV
+          fi
+
+      - name: 🛠️ Exécuter les Tests Apex
+        run: sfdx force:apex:test:run -u $SF_ALIAS --wait 10 --resultformat human --codecoverage --outputdir test-results
+
+  merge_and_deploy:
+    name: 🚀 Merge Automatique et Déploiement
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: 📥 Checkout du Code
+        uses: actions/checkout@v3
+
+      - name: 🚀 Installer Salesforce CLI
+        run: npm install --global sfdx-cli
+
+      - name: 🔑 Authentification Salesforce
+        run: |
+          if [[ "${{ github.base_ref }}" == "master" ]]; then
+            echo "${{ secrets.SALESFORCE_AUTH_URL_PROD }}" > ./authfile.txt
+            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a prod-org
+            echo "SF_ALIAS=prod-org" >> $GITHUB_ENV
+          elif [[ "${{ github.base_ref }}" == "preprod" ]]; then
+            echo "${{ secrets.SALESFORCE_AUTH_URL_PREPROD }}" > ./authfile.txt
+            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a preprod-org
+            echo "SF_ALIAS=preprod-org" >> $GITHUB_ENV
+          fi
+
+      - name: 🚀 Merge automatique de la PR
+        uses: devops-infra/action-pull-request@v0.5.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          merge_method: squash
+
+      - name: 🚀 Déploiement vers l'environnement cible
+        run: |
+          echo "Déploiement vers $SF_ALIAS"
+          sfdx force:source:deploy -u $SF_ALIAS -p force-app --testlevel RunLocalTests
