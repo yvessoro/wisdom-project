@@ -25,7 +25,7 @@ jobs:
             sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a prod-org
             echo "SF_ALIAS=prod-org" >> $GITHUB_ENV
           elif [[ "${{ github.base_ref }}" == "preprod" ]]; then
-            echo "${{ secrets.SALESFORCE_AUTH_URL_PREPROD }}" > ./authfile.txt
+            echo "${{ secrets.SALESFORCE_AUTH_URL_PROD }}" > ./authfile.txt
             sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a preprod-org
             echo "SF_ALIAS=preprod-org" >> $GITHUB_ENV
           fi
@@ -52,7 +52,7 @@ jobs:
             sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a prod-org
             echo "SF_ALIAS=prod-org" >> $GITHUB_ENV
           elif [[ "${{ github.base_ref }}" == "preprod" ]]; then
-            echo "${{ secrets.SALESFORCE_AUTH_URL_PREPROD }}" > ./authfile.txt
+            echo "${{ secrets.SALESFORCE_AUTH_URL_PROD }}" > ./authfile.txt
             sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a preprod-org
             echo "SF_ALIAS=preprod-org" >> $GITHUB_ENV
           fi
