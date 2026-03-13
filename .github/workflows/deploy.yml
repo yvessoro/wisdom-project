@@ -1,69 +1,37 @@
-name: 🚀 Deploy to Salesforce
+name: Deploy to Dev Org
 
 on:
   pull_request:
     branches:
-      - master
-      - preprod
+      - dev
 
 jobs:
-  test:
-    name: ✅ Vérification des Tests Apex
+  validate_and_deploy:
+
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout du Code
+
+      - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: 🚀 Installer Salesforce CLI
-        run: npm install --global sfdx-cli
-
-      - name: 🔑 Authentification Salesforce
-        run: |
-          if [[ "${{ github.base_ref }}" == "master" ]]; then
-            echo "${{ secrets.SALESFORCE_AUTH_URL_PROD }}" > ./authfile.txt
-            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a prod-org
-            echo "SF_ALIAS=prod-org" >> $GITHUB_ENV
-          elif [[ "${{ github.base_ref }}" == "preprod" ]]; then
-            echo "${{ secrets.SALESFORCE_AUTH_URL_PREPROD }}" > ./authfile.txt
-            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a preprod-org
-            echo "SF_ALIAS=preprod-org" >> $GITHUB_ENV
-          fi
-
-      - name: 🛠️ Exécuter les Tests Apex
-        run: sfdx force:apex:test:run -u $SF_ALIAS --wait 10 --resultformat human --codecoverage --outputdir test-results
-
-  merge_and_deploy:
-    name: 🚀 Merge Automatique et Déploiement
-    runs-on: ubuntu-latest
-    needs: test
-
-    steps:
-      - name: 📥 Checkout du Code
-        uses: actions/checkout@v3
-
-      - name: 🚀 Installer Salesforce CLI
-        run: npm install --global sfdx-cli
-
-      - name: 🔑 Authentification Salesforce
-        run: |
-          if [[ "${{ github.base_ref }}" == "master" ]]; then
-            echo "${{ secrets.SALESFORCE_AUTH_URL_PROD }}" > ./authfile.txt
-            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a prod-org
-            echo "SF_ALIAS=prod-org" >> $GITHUB_ENV
-          elif [[ "${{ github.base_ref }}" == "preprod" ]]; then
-            echo "${{ secrets.SALESFORCE_AUTH_URL_PREPROD }}" > ./authfile.txt
-            sfdx auth:sfdxurl:store --sfdxurlfile=./authfile.txt -a preprod-org
-            echo "SF_ALIAS=preprod-org" >> $GITHUB_ENV
-          fi
-
-      - name: 🚀 Merge automatique de la PR
-        uses: devops-infra/action-pull-request@v0.5.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          merge_method: squash
+          fetch-depth: 0
 
-      - name: 🚀 Déploiement vers l'environnement cible
+      - name: Install Salesforce CLI
+        run: npm install --global @salesforce/cli
+
+      - name: Authenticate to Salesforce
         run: |
-          echo "Déploiement vers $SF_ALIAS"
-          sfdx force:source:deploy -u $SF_ALIAS -p force-app --testlevel RunLocalTests
+          echo "${{ secrets.SF_AUTH_URL_DEV }}" > authfile.txt
+          sf org login sfdx-url --sfdx-url-file authfile.txt --alias dev-org
+
+      - name: Run Apex Tests
+        run: |
+          sf apex run test --target-org dev-org --wait 10 --code-coverage
+
+      - name: Deploy to Dev Org
+        run: |
+          sf project deploy start \
+          --source-dir force-app \
+          --target-org dev-org \
+          --test-level RunLocalTests
