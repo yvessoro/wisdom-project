@@ -3,7 +3,7 @@ name: Deploy to Dev Org
 on:
   pull_request:
     branches:
-      - dev
+      - master
 
 jobs:
   validate_and_deploy:
